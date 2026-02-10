@@ -1,65 +1,46 @@
 # CUDA Batch Image Processor
+This project applies a Gaussian blur to multiple images in parallel using CUDA.
 
-This project demonstrates GPU-accelerated batch image processing using CUDA by applying a Gaussian blur filter to multiple images concurrently.
-
----
 
 ## Compilation
-```bash
 make
-Usage
+
+## Usage
 ./image_processor --input_dir <path_to_images> --output_dir <path_to_output>
-Example
+
+## Example
 ./image_processor --input_dir ./data/images --output_dir ./data/output
-Project Description
-The application processes a directory of images on the GPU using CUDA. A custom CUDA kernel applies a 3×3 Gaussian blur to each image. The program was validated using batches of more than ten high-resolution (4K) images. Key insights from this project include the impact of grid and block configuration on performance and the importance of careful boundary handling within GPU kernels.
 
-Code Description
-The codebase is designed to maximize data-parallel execution on the GPU:
+## Project Description
+This program processes a batch of images (tested with 10+ large 4K images) using a CUDA kernel to apply a 3x3 Gaussian blur. The CLI takes input/output directory paths as arguments. Lessons learned: Optimizing grid/block sizes improves performance; handling edge cases in the kernel is crucial.
 
-Key Components
-Main Function
+## Code Description
+The codebase is structured to leverage CUDA for parallel image processing:
 
-Parses command-line arguments (--input_dir and --output_dir) to determine input and output directories.
+### Key Components
+1. **Main Function**:
+   - Parses command-line arguments (`--input_dir` and `--output_dir`) to specify input/output directories.
+   - Validates directory existence before processing.
+   - Calls `processImages` to handle the batch.
 
-Verifies directory validity before execution.
+2. **processImages Function**:
+   - Iterates over all `.jpg` and `.png` files in the input directory using `std::filesystem`.
+   - For each image:
+     - Loads it using OpenCV (`imread`).
+     - Allocates CUDA device memory for input/output data.
+     - Copies image data to the GPU.
+     - Launches the Gaussian blur kernel.
+     - Copies the result back to the host and saves it with OpenCV (`imwrite`).
 
-Initiates batch processing through the processImages function.
+3. **gaussianBlurKernel (CUDA Kernel)**:
+   - A 2D kernel that applies a 3x3 Gaussian blur to each pixel.
+   - Uses a hardcoded 3x3 Gaussian kernel with weights summing to 1 (e.g., center = 4/16, edges = 1/16).
+   - Handles RGB channels separately by iterating over them.
+   - Ensures boundary safety with `min`/`max` to avoid out-of-bounds memory access.
+   - Launched with a 2D grid/block configuration (16x16 threads per block).
 
-processImages Function
-
-Traverses the input directory using std::filesystem to identify supported image formats (.jpg, .png).
-
-For each image:
-
-Loads image data into host memory using OpenCV (imread).
-
-Allocates CUDA device memory for input and output buffers.
-
-Transfers image data from host to device.
-
-Launches the CUDA Gaussian blur kernel.
-
-Copies processed data back to the host and saves the result using OpenCV (imwrite).
-
-gaussianBlurKernel (CUDA Kernel)
-
-Implements a two-dimensional CUDA kernel where each thread processes a single pixel.
-
-Applies a fixed 3×3 Gaussian convolution mask with normalized weights.
-
-Processes RGB channels independently.
-
-Includes boundary checks using clamping (min/max) to prevent out-of-bounds memory access.
-
-Executed using a 16×16 thread block configuration.
-
-Implementation Details
-Parallelism: Pixel-level parallelism is achieved by mapping one CUDA thread to one image pixel.
-
-Memory Management: Device memory is explicitly managed using cudaMalloc and cudaMemcpy.
-
-Error Handling: Handles invalid directories and image loading failures gracefully.
-
-Code Style: Maintains consistent naming conventions, modular structure, and inline documentation in line with standard C++ style guidelines.
-
+### Implementation Details
+- **Parallelism**: Each thread processes one pixel, with the grid sized dynamically based on image dimensions.
+- **Memory Management**: Explicit CUDA memory allocation (`cudaMalloc`) and transfer (`cudaMemcpy`) for efficiency.
+- **Error Handling**: Checks for file loading failures and directory existence.
+- **Style**: Follows Google C++ Style Guide (consistent naming, comments, modularity).
