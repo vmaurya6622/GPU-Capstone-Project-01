@@ -33,11 +33,11 @@ The codebase is structured to leverage CUDA for parallel image processing:
      - Copies the result back to the host and saves it with OpenCV (`imwrite`).
 
 3. **gaussianBlurKernel (CUDA Kernel)**:
-   - A 2D kernel that applies a 3x3 Gaussian blur to each pixel.
-   - Uses a hardcoded 3x3 Gaussian kernel with weights summing to 1 (e.g., center = 4/16, edges = 1/16).
-   - Handles RGB channels separately by iterating over them.
-   - Ensures boundary safety with `min`/`max` to avoid out-of-bounds memory access.
-   - Launched with a 2D grid/block configuration (16x16 threads per block).
+   - Implements a two-dimensional CUDA kernel where each thread processes a single pixel.
+   - Applies a fixed 3×3 Gaussian convolution mask with normalized weights.
+   - Processes RGB channels independently.
+   - Includes boundary checks using clamping (min/max) to prevent out-of-bounds memory access.
+   - Executed using a 16×16 thread block configuration.
 
 ### Implementation Details
 - **Parallelism**: Each thread processes one pixel, with the grid sized dynamically based on image dimensions.
